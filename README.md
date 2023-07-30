@@ -1,6 +1,7 @@
 # ClimateReportsGenerator
-Generate real-time weather reports for different cities around the world. From the OpenWeather API using FastAPI and displays it using Streamlit a Python web framework
+Generate real-time weather reports for different cities around the world. From the OpenWeather API using FastAPI and displays it using Streamlit a Python web framework.
 
+Images courtesy of https://unsplash.com/
 ## Features:
 
 1. **Real-Time Weather Data:** The application retrieves real-time weather data from the OpenWeather API, including temperature, humidity, pressure, weather description, and wind speed.
