@@ -7,7 +7,7 @@ app = FastAPI()
 @app.get("/weather/{city}")
 def get_weather(city: str):
     api_key = "!!!SECRET!!!"
-    url = f"https://api.openweathermap.org/data/2.5/weather?q={city}&APPID={api_key}"
+    url = f"https://api.openweathermap.org/data/2.5/weather?q={city}&APPID={api_key}&units=metric"
     
     response = requests.get(url)
     weather_data = response.json()

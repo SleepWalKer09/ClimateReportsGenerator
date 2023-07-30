@@ -1,176 +1,249 @@
 import streamlit as st
 import httpx
-import time
-import matplotlib.pyplot as plt
 import pandas as pd
-import requests
-import plotly.graph_objects as go
-
+import plotly.express as px
+import threading
+import time
 from datetime import datetime, timedelta
-from PIL import Image
-from io import BytesIO
-from st_aggrid import AgGrid, GridOptionsBuilder
-
-
-'''
-Pendientes:
-Hacer que se actualicen las tablas en lugar de que se repita todo al final cada 5 seg
-Poner wallpapers dinamicos de acueerdo al clima actual de la ciudad (encontrar imagenes de noche y dia)
-Endpoint para pronostico de proximos dias (investigar si es posible en la API)
-pruebas unitarias
-'''
 
 
 # Definir la URL base de la API
 base_url = "http://localhost:8000/weather/"
 # URL base para obtener los íconos de OpenWeather
 icon_base_url = "https://openweathermap.org/img/wn/"
+
 # Configuración de la página
 st.set_page_config(page_title="Reportes climáticos", page_icon="🌤️")
 
 # Título de la interfaz
-st.title("Generador de :blue[reportes climáticos]🌪️")
+st.title("Generador de Reportes Climáticos 🌪️")
 
-# Bandera para controlar el ciclo de actualización
-seguir_actualizando = True
 
-@st.cache(ttl=60)  # Cachear los resultados durante 60 segundos
+# Función para obtener datos climáticos de la API
 def get_weather_data(city):
     url = base_url + city
     response = httpx.get(url)
     response.raise_for_status()
     return response.json()
 
-# Obtener la ciudad del usuario
-city = st.text_input("Ingrese el nombre de la ciudad:")
-# Crear un botón para detener la actualización de los datos
-stop_update = st.button("Detener seguimiento")
+# Función para mostrar TODA la información climática en la interfaz
+def mostrar_info_climatica(weather_data):
+    # Mostrar la información climática
+    st.write(
+        f'<div style="display: flex; align-items: center;">'
+        f'<h1 style="margin-right: 10px;">Clima en {weather_data["name"]}</h1>'
+        f'<img src="{icon_base_url}{weather_data["weather"][0]["icon"]}@2x.png" style="width: 180px; height: 120px;">'
+        f'</div>',
+        unsafe_allow_html=True
+    )
+    # Dividir el espacio en tres columnas
+    kpi1, kpi2, kpi3 = st.columns(3)
+    # Mostrar la hora local de la ciudad
+    timezone_offset = weather_data["timezone"]
+    timezone = datetime.utcnow() + timedelta(seconds=timezone_offset)
+    timezone_str = timezone.strftime("%H:%M:%S")
+    # Mostrar las tarjetas de resumen
+    kpi1.metric(label="Descripción del clima", value=weather_data['weather'][0]['description'])
+    kpi2.metric(label="Hora local", value=timezone_str)
+    kpi3.metric(label="Temperatura", value=f"{weather_data['main']['temp']} °C")
 
-
-if city:
-# Hacer la llamada a la API para obtener los datos del clima
-    # url = base_url + city
-    # response = httpx.get(url)
-    # response.raise_for_status()
-    # weather_data = response.json()
-    weather_data = get_weather_data(city)
-
-    # Crear contenedores para mostrar las mediciones como gráficas de líneas
-    temp_container = st.empty()
-    temp_min_container = st.empty()
-    temp_max_container = st.empty()
-    pressure_container = st.empty()
-    humidity_container = st.empty()
-
-    while seguir_actualizando:
-        # Obtener el ícono correspondiente según día o noche
-        weather_icon = weather_data["weather"][0]["icon"]
-        is_day = weather_icon.endswith("d")
-        # Definir las URLs de los íconos según día o noche
-        day_icon_url = f"{icon_base_url}{weather_icon.replace('n', 'd')}@2x.png"
-        night_icon_url = f"{icon_base_url}{weather_icon.replace('d', 'n')}@2x.png"
-        # Obtener la descripción del clima con el ícono correspondiente
-        weather_description = weather_data["weather"][0]["description"]
-        icon_html = day_icon_url if is_day else night_icon_url
-        
-        
-        # Mostrar nombre de la ciudad y el icono en la misma línea utilizando HTML y CSS
-        st.write(
-            f'<div style="display: flex; align-items: center;">'
-            f'<h1 style="margin-right: 10px;">Clima en {weather_data["name"]}</h1>'
-            f'<img src="{icon_html}" style="width: 180px; height: 120px;">'
-            f'</div>',
-            unsafe_allow_html=True
-        )
-        # Mostrar el caption con la descripción del clima debajo de la imagen
-        st.write(f"**Descripción del clima:** {weather_description}")
-        
-        # if st.button("Detener seguimiento"):
-        #     detener_seguimiento()
-        # Obtener el campo "main" de "weather"
-        weather_main = weather_data["weather"][0]["main"]
-        # Mostrar imagen según el campo "main" de "weather"
+    # Mostrar imagen según el campo "icon" de "weather"
+    weather_icon = weather_data["weather"][0]["icon"]
+    weather_main = weather_data["weather"][0]["main"]
+    if weather_icon.endswith("d"):
+        # Es de día, usar imágenes sin "_n" para representar el clima
         if weather_main == "Rain":
-            st.image("images\\rainy.png", caption="Lluvia")
+            st.image("images\\rainy.jpg", caption="Dia con Lluvia")
         elif weather_main == "Clear":
-            st.image("images\sunny.png", caption="Despejado")
+            st.image("images\clear.jpg", caption="Dia Despejado")
         elif weather_main == "Clouds":
-            st.image("images\cloudy.png", caption="Nublado")
+            st.image("images\cloudy.jpg", caption="Dia Nublado")
+    else:
+        # Es de noche, usar imágenes con "_n" para representar el clima
+        if weather_main == "Rain":
+            st.image("images\\rainy_n.jpg", caption="Noche con Lluvia")
+        elif weather_main == "Clear":
+            st.image("images\clear_n.jpg", caption="Noche Despejada")
+        elif weather_main == "Clouds":
+            st.image("images\cloudy_n.jpg", caption="Noche Nublada")
         else:
-            st.image("images\default_image.png", caption="Estado del tiempo desconocido")
-        # Convertir el campo "timezone" a formato de 24 horas
-        timezone_offset = weather_data["timezone"]
-        timezone = datetime.utcnow() + timedelta(seconds=timezone_offset)
-        timezone_str = timezone.strftime("%H:%M:%S")
-        # Mostrar información del campo "timezone" en formato de 24 horas
-        st.subheader("Zona horaria (24 horas)")
-        st.markdown(f"Zona horaria: {timezone_str}")
+            st.image("images\default_image.jpg", caption="Estado del tiempo desconocido")
+
+    # Mostrar tabla con datos adicionales, incluyendo descripción del clima y el ícono
+    st.subheader("Datos adicionales")
+    data = {
+        "País": [weather_data["sys"]["country"]],
+        "Longitud": [weather_data["coord"]["lon"]],
+        "Latitud": [weather_data["coord"]["lat"]],
+        "Descripción": [weather_data["weather"][0]["description"]],
+        "Velocidad del Viento(m/s)": [weather_data["wind"]["speed"]],
+        "Hora Amanecer(Hora local)": [datetime.fromtimestamp(weather_data["sys"]["sunrise"]).strftime("%Y-%m-%d %H:%M:%S")],
+        "Hora Atardecer(Hora local)": [datetime.fromtimestamp(weather_data["sys"]["sunset"]).strftime("%Y-%m-%d %H:%M:%S")]
+    }
+    df = pd.DataFrame(data)
+    st.dataframe(df)
+
+    # Mostrar las gráficas
+    timezone_offset = weather_data["timezone"]
+    timezone = datetime.utcnow() + timedelta(seconds=timezone_offset)
+    timezone_str = timezone.strftime("%H:%M:%S")
+
+    # Mostrar gráficas
+    # Crear gráficas de Temperatura en el Tiempo
+    temp_time_df = pd.DataFrame({
+        "Tiempo": [timezone_str],
+        "Temperatura": [weather_data["main"]["temp"]]
+    })
+    temp_time_chart = px.line(temp_time_df, x="Tiempo", y="Temperatura", title="Variación de Temperatura en el Tiempo")
+
+    # Mostrar gráfica de Temperatura Mínima y Máxima (gráfico de barras)
+    temp_min_max_df = pd.DataFrame({
+        "Temperatura": ["Temperatura Mínima", "Temperatura Máxima"],
+        "Valor": [weather_data["main"]["temp_min"], weather_data["main"]["temp_max"]]
+    })
+
+    temp_min_max_chart = px.bar(temp_min_max_df, x="Temperatura", y="Valor", title="Temperatura Mínima y Máxima")
+
+    # Crear gráficas de Presión Atmosférica en el Tiempo
+    pressure_time_df = pd.DataFrame({
+        "Tiempo": [timezone_str],
+        "Presión Atmosférica": [weather_data["main"]["pressure"]]
+    })
+
+    pressure_time_chart = px.line(pressure_time_df, x="Tiempo", y="Presión Atmosférica", title="Variación de Presión Atmosférica en el Tiempo")
+
+    # Crear gráficas de Humedad en el Tiempo
+    humidity_time_df = pd.DataFrame({
+        "Tiempo": [timezone_str],
+        "Humedad": [weather_data["main"]["humidity"]]
+    })
+
+    humidity_time_chart = px.line(humidity_time_df, x="Tiempo", y="Humedad", title="Variación de Humedad en el Tiempo")
+
+    # Dividir el espacio en dos columnas para los gráficos interactivos
+    fig_col1, fig_col2 = st.columns(2)
+    fig_col3, fig_col4 = st.columns(2)
+
+    # Mostrar los gráficos interactivos en las columnas respectivas
+    with fig_col1:
+        st.markdown("### Temperatura Actual")
+        st.plotly_chart(temp_time_chart)
+
+    with fig_col2:
+        st.markdown("### Temperatura Mínima y Máxima")
+        st.plotly_chart(temp_min_max_chart)
+
+    with fig_col3:
+        st.markdown("### Presión Atmosférica")
+        st.plotly_chart(pressure_time_chart)
+
+    with fig_col4:
+        st.markdown("### Humedad")
+        st.plotly_chart(humidity_time_chart)
+
+# Variable para controlar el hilo de actualización
+seguir_actualizando = False
+# Variable para almacenar los datos climáticos
+weather_data = None
+# Estructuras de datos para almacenar datos históricos
+temperatura_historica = []
+presion_historica = []
+humedad_historica = []
+
+# Función para actualizar los datos climáticos y mostrar la información climática
+def update_weather_data(city):
+    global weather_data, temperatura_historica, presion_historica, humedad_historica
+
+    try:
+        # Obtener el clima actual de la ciudad ingresada
+        weather_data = get_weather_data(city)
+
+        # Actualizar datos históricos
+        if weather_data:
+            temperatura_historica.append({
+                "Tiempo": datetime.utcnow().strftime("%H:%M:%S"),
+                "Temperatura": weather_data["main"]["temp"]
+            })
+
+            presion_historica.append({
+                "Tiempo": datetime.utcnow().strftime("%H:%M:%S"),
+                "Presión Atmosférica": weather_data["main"]["pressure"]
+            })
+
+            humedad_historica.append({
+                "Tiempo": datetime.utcnow().strftime("%H:%M:%S"),
+                "Humedad": weather_data["main"]["humidity"]
+            })
+
+    except httpx.HTTPError as e:
+        st.error(f"Error al obtener los datos climáticos: {e}")
+
+# Función para mostrar las gráficas con los datos históricos actualizados
+def mostrar_graficas():
+    # Crear DataFrame para la variación de Temperatura en el Tiempo
+    temp_time_df = pd.DataFrame(temperatura_historica, columns=["Tiempo", "Temperatura"])
+    temp_time_chart = px.line(temp_time_df, x="Tiempo", y="Temperatura", title="Variación de Temperatura en el Tiempo")
+
+    # Crear DataFrame para la Temperatura Mínima y Máxima
+    temp_min_max_df = pd.DataFrame(presion_historica, columns=["Tiempo", "Presión Atmosférica"])
+    temp_min_max_chart = px.line(temp_min_max_df, x="Tiempo", y="Presión Atmosférica", title="Variación de Presión Atmosférica en el Tiempo")
+
+    # Crear DataFrame para la variación de Humedad en el Tiempo
+    humidity_time_df = pd.DataFrame(humedad_historica, columns=["Tiempo", "Humedad"])
+    humidity_time_chart = px.line(humidity_time_df, x="Tiempo", y="Humedad", title="Variación de Humedad en el Tiempo")
+
+    # Dividir el espacio en dos columnas para los gráficos interactivos
+    fig_col1, fig_col2 = st.columns(2)
+    fig_col3, fig_col4 = st.columns(2)
+
+    # Mostrar los gráficos interactivos en las columnas respectivas
+    with fig_col1:
+        st.plotly_chart(temp_time_chart)
+
+    with fig_col2:
+        st.plotly_chart(temp_min_max_chart)
+
+    with fig_col3:
+        st.plotly_chart(humidity_time_chart)
+
+# Widget para obtener la ciudad del usuario
+city = st.text_input("Ingrese el nombre de la ciudad:")
+# Widget para iniciar el seguimiento
+start_update = st.button("Iniciar seguimiento")
+# Widget para detener el seguimiento
+stop_update_button = st.button("Detener seguimiento")
+
+# Verificar si se ha ingresado una ciudad válida y se ha hecho clic en el botón "Iniciar seguimiento"
+if city and start_update and not seguir_actualizando:
+    seguir_actualizando = True
+    # Crear un contenedor vacío para mostrar la información climática
+    info_climatica_container = st.empty()
+    # Realizar una llamada inicial para mostrar los datos climáticos antes de iniciar el intervalo de actualización
+    update_weather_data(city)
+
+while seguir_actualizando:
+    # Actualizar los datos climáticos cada 10 segundos
+    update_weather_data(city)
+
+    # Mostrar la información climática en el contenedor
+    if weather_data:
+        # Actualizar el contenedor con la información climática
+        info_climatica_container.subheader("Información climática actual (última actualización)")
+        mostrar_info_climatica(weather_data)
+        # Mostrar las gráficas con los datos históricos actualizados
+        mostrar_graficas()
         
+    # Pequeño retraso para evitar llamadas excesivamente rápidas a la API
+    time.sleep(10)
 
-        st.subheader("Gráficas")
-        # Mostrar la temperatura actual y la sensación térmica en una gráfica de líneas
-        temp_df = pd.DataFrame({
-            "Tiempo": [timezone_str],
-            "Temperatura": [weather_data["main"]["temp"]],
-            "Sensación térmica": [weather_data["main"]["feels_like"]]
-        })
-        temp_chart = go.Figure()
-        temp_chart.add_trace(go.Scatter(x=temp_df["Tiempo"], y=temp_df["Temperatura"], mode='lines+markers', name='Temperatura'))
-        temp_chart.add_trace(go.Scatter(x=temp_df["Tiempo"], y=temp_df["Sensación térmica"], mode='lines+markers', name='Sensación térmica'))
-        temp_chart.update_layout(title="Temperatura y Sensación Térmica")
-        temp_container.plotly_chart(temp_chart)
+    # Detener el seguimiento si se ha hecho clic en el botón "Detener seguimiento"
+    if stop_update_button:
+        seguir_actualizando = False
+        # Mostrar mensaje cuando el seguimiento en tiempo real ha sido detenido
+        st.warning("Seguimiento en tiempo real está detenido. Ingrese una ciudad para continuar.")
 
-        # Mostrar temperatura mínima y máxima en una gráfica de líneas
-        temp_min_max_df = pd.DataFrame({
-            "Tiempo": [timezone_str],
-            "Temperatura Mínima": [weather_data["main"]["temp_min"]],
-            "Temperatura Máxima": [weather_data["main"]["temp_max"]]
-        })
-        temp_min_max_chart = go.Figure()
-        temp_min_max_chart.add_trace(go.Scatter(x=temp_min_max_df["Tiempo"], y=temp_min_max_df["Temperatura Mínima"], mode='lines+markers', name='Temperatura Mínima'))
-        temp_min_max_chart.add_trace(go.Scatter(x=temp_min_max_df["Tiempo"], y=temp_min_max_df["Temperatura Máxima"], mode='lines+markers', name='Temperatura Máxima'))
-        temp_min_max_chart.update_layout(title="Temperatura Mínima y Máxima")
-        temp_min_container.plotly_chart(temp_min_max_chart)
 
-        # Mostrar la presión atmosférica en una gráfica de líneas
-        pressure_df = pd.DataFrame({
-            "Tiempo": [timezone_str],
-            "Presión": [weather_data["main"]["pressure"]]
-        })
-        pressure_chart = go.Figure()
-        pressure_chart.add_trace(go.Scatter(x=pressure_df["Tiempo"], y=pressure_df["Presión"], mode='lines+markers', name='Presión Atmosférica'))
-        pressure_chart.update_layout(title="Presión Atmosférica")
-        pressure_container.plotly_chart(pressure_chart)
-
-        # Mostrar la humedad en una gráfica de líneas
-        humidity_df = pd.DataFrame({
-            "Tiempo": [timezone_str],
-            "Humedad": [weather_data["main"]["humidity"]]
-        })
-        humidity_chart = go.Figure()
-        humidity_chart.add_trace(go.Scatter(x=humidity_df["Tiempo"], y=humidity_df["Humedad"], mode='lines+markers', name='Humedad'))
-        humidity_chart.update_layout(title="Humedad")
-        humidity_container.plotly_chart(humidity_chart)
-
-        # Mostrar tabla con datos adicionales, incluyendo descripción del clima y el ícono
-        st.subheader("Datos adicionales")
-        data = {
-            "País": [weather_data["sys"]["country"]],
-            "Longitud": [weather_data["coord"]["lon"]],
-            "Latitud": [weather_data["coord"]["lat"]],
-            "Descripción": [weather_data["weather"][0]["description"]],
-            "Velocidad del Viento": [weather_data["wind"]["speed"]],
-            "Amanecer": [datetime.fromtimestamp(weather_data["sys"]["sunrise"]).strftime("%Y-%m-%d %H:%M:%S")],
-            "Atardecer": [datetime.fromtimestamp(weather_data["sys"]["sunset"]).strftime("%Y-%m-%d %H:%M:%S")]
-        }
-        df = pd.DataFrame(data)
-        st.dataframe(df)
-        # Verificar si se ha presionado el botón "Detener seguimiento"
-        if stop_update:
-            # Detener la ejecución de la aplicación
-            st.write("Se ha detenido el seguimiento!!, vuelva a ingresar otra ciudad para consultar el clima")
-            break
-            st.stop()
-
-        # Esperar 5 segundos antes de hacer la próxima llamada a la API
-        time.sleep(5)
+# Mostrar la información climática actual congelada
+if weather_data:
+    st.subheader("Información climática actual (última actualización)")
+    mostrar_info_climatica(weather_data)
