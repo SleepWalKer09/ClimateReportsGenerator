@@ -1,3 +1,4 @@
+
 import streamlit as st
 import httpx
 import pandas as pd
@@ -5,7 +6,6 @@ import plotly.express as px
 import threading
 import time
 from datetime import datetime, timedelta
-
 
 # Definir la URL base de la API
 base_url = "http://localhost:8000/weather/"
@@ -18,7 +18,6 @@ st.set_page_config(page_title="Reportes climáticos", page_icon="🌤️")
 # Título de la interfaz
 st.title("Generador de Reportes Climáticos 🌪️")
 
-
 # Función para obtener datos climáticos de la API
 def get_weather_data(city):
     url = base_url + city
@@ -27,9 +26,9 @@ def get_weather_data(city):
     return response.json()
 
 # Función para mostrar TODA la información climática en la interfaz
-def mostrar_info_climatica(weather_data):
-    # Mostrar la información climática
-    st.write(
+def mostrar_info_climatica(weather_data, info_container):
+    # Update the provided container with weather data
+    info_container.write(
         f'<div style="display: flex; align-items: center;">'
         f'<h1 style="margin-right: 10px;">Clima en {weather_data["name"]}</h1>'
         f'<img src="{icon_base_url}{weather_data["weather"][0]["icon"]}@2x.png" style="width: 180px; height: 120px;">'
@@ -141,109 +140,43 @@ def mostrar_info_climatica(weather_data):
         st.markdown("### Humedad")
         st.plotly_chart(humidity_time_chart)
 
-# Variable para controlar el hilo de actualización
-seguir_actualizando = False
-# Variable para almacenar los datos climáticos
-weather_data = None
-# Estructuras de datos para almacenar datos históricos
-temperatura_historica = []
-presion_historica = []
-humedad_historica = []
+def update_weather_data(city, info_container, graph_container):
+    weather_data = get_weather_data(city)
+    mostrar_info_climatica(weather_data, info_container)
+    # mostrar_graficas() can be updated similarly to use the graph_container
 
-# Función para actualizar los datos climáticos y mostrar la información climática
-def update_weather_data(city):
-    global weather_data, temperatura_historica, presion_historica, humedad_historica
+# Create containers for dynamic content
+info_climatica_container = st.empty()
+graph_container = st.empty()
 
-    try:
-        # Obtener el clima actual de la ciudad ingresada
-        weather_data = get_weather_data(city)
+# Initialize session state if not already done
+if "tracking_city" not in st.session_state:
+    st.session_state.tracking_city = ""
 
-        # Actualizar datos históricos
-        if weather_data:
-            temperatura_historica.append({
-                "Tiempo": datetime.utcnow().strftime("%H:%M:%S"),
-                "Temperatura": weather_data["main"]["temp"]
-            })
-
-            presion_historica.append({
-                "Tiempo": datetime.utcnow().strftime("%H:%M:%S"),
-                "Presión Atmosférica": weather_data["main"]["pressure"]
-            })
-
-            humedad_historica.append({
-                "Tiempo": datetime.utcnow().strftime("%H:%M:%S"),
-                "Humedad": weather_data["main"]["humidity"]
-            })
-
-    except httpx.HTTPError as e:
-        st.error(f"Error al obtener los datos climáticos: {e}")
-
-# Función para mostrar las gráficas con los datos históricos actualizados
-def mostrar_graficas():
-    # Crear DataFrame para la variación de Temperatura en el Tiempo
-    temp_time_df = pd.DataFrame(temperatura_historica, columns=["Tiempo", "Temperatura"])
-    temp_time_chart = px.line(temp_time_df, x="Tiempo", y="Temperatura", title="Variación de Temperatura en el Tiempo")
-
-    # Crear DataFrame para la Temperatura Mínima y Máxima
-    temp_min_max_df = pd.DataFrame(presion_historica, columns=["Tiempo", "Presión Atmosférica"])
-    temp_min_max_chart = px.line(temp_min_max_df, x="Tiempo", y="Presión Atmosférica", title="Variación de Presión Atmosférica en el Tiempo")
-
-    # Crear DataFrame para la variación de Humedad en el Tiempo
-    humidity_time_df = pd.DataFrame(humedad_historica, columns=["Tiempo", "Humedad"])
-    humidity_time_chart = px.line(humidity_time_df, x="Tiempo", y="Humedad", title="Variación de Humedad en el Tiempo")
-
-    # Dividir el espacio en dos columnas para los gráficos interactivos
-    fig_col1, fig_col2 = st.columns(2)
-    fig_col3, fig_col4 = st.columns(2)
-
-    # Mostrar los gráficos interactivos en las columnas respectivas
-    with fig_col1:
-        st.plotly_chart(temp_time_chart)
-
-    with fig_col2:
-        st.plotly_chart(temp_min_max_chart)
-
-    with fig_col3:
-        st.plotly_chart(humidity_time_chart)
+if "start_update" not in st.session_state:
+    st.session_state.start_update = False
 
 # Widget para obtener la ciudad del usuario
-city = st.text_input("Ingrese el nombre de la ciudad:")
+city = st.text_input("Ingrese el nombre de la ciudad:", st.session_state.tracking_city)
+
 # Widget para iniciar el seguimiento
-start_update = st.button("Iniciar seguimiento")
+start_update_clicked = st.button("Iniciar seguimiento")
+
+# Update session state when button is clicked
+if start_update_clicked:
+    st.session_state.start_update = not st.session_state.start_update
+    st.session_state.tracking_city = city
+
 # Widget para detener el seguimiento
 stop_update_button = st.button("Detener seguimiento")
 
-# Verificar si se ha ingresado una ciudad válida y se ha hecho clic en el botón "Iniciar seguimiento"
-if city and start_update and not seguir_actualizando:
-    seguir_actualizando = True
-    # Crear un contenedor vacío para mostrar la información climática
-    info_climatica_container = st.empty()
-    # Realizar una llamada inicial para mostrar los datos climáticos antes de iniciar el intervalo de actualización
-    update_weather_data(city)
+# If stop button is clicked, update session state and display warning
+if stop_update_button:
+    st.session_state.start_update = False
+    st.warning("Seguimiento en tiempo real está detenido. Ingrese una ciudad para continuar.")
 
-while seguir_actualizando:
-    # Actualizar los datos climáticos cada 10 segundos
-    update_weather_data(city)
-
-    # Mostrar la información climática en el contenedor
-    if weather_data:
-        # Actualizar el contenedor con la información climática
-        info_climatica_container.subheader("Información climática actual (última actualización)")
-        mostrar_info_climatica(weather_data)
-        # Mostrar las gráficas con los datos históricos actualizados
-        mostrar_graficas()
-        
-    # Pequeño retraso para evitar llamadas excesivamente rápidas a la API
-    time.sleep(10)
-
-    # Detener el seguimiento si se ha hecho clic en el botón "Detener seguimiento"
-    if stop_update_button:
-        seguir_actualizando = False
-        # Mostrar mensaje cuando el seguimiento en tiempo real ha sido detenido
-        st.warning("Seguimiento en tiempo real está detenido. Ingrese una ciudad para continuar.")
-
-
-# Mostrar la información climática actual congelada
-if weather_data:
-    st.subheader("Información climática actual (última actualización)")
-    mostrar_info_climatica(weather_data)
+# If session state indicates tracking, fetch and display data, then rerun after a delay
+if st.session_state.start_update and st.session_state.tracking_city:
+    update_weather_data(st.session_state.tracking_city, info_climatica_container, graph_container)
+    time.sleep(5)  # Refresh data every 5 seconds (can be adjusted as needed)
+    st.experimental_rerun()
