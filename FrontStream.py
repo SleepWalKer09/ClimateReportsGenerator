@@ -201,27 +201,28 @@ if "tracking_city" not in st.session_state:
 if "start_update" not in st.session_state:
     st.session_state.start_update = False
 
-# Widget para obtener la ciudad del usuario
-city = st.text_input("Ingrese el nombre de la ciudad:", st.session_state.tracking_city)
+if __name__ == '__main__':
+    # Widget para obtener la ciudad del usuario
+    city = st.text_input("Ingrese el nombre de la ciudad:", st.session_state.tracking_city)
 
-# Widget para iniciar el seguimiento
-start_update_clicked = st.button("Iniciar seguimiento")
+    # Widget para iniciar el seguimiento
+    start_update_clicked = st.button("Iniciar seguimiento")
 
-# Update session state when button is clicked
-if start_update_clicked:
-    st.session_state.start_update = not st.session_state.start_update
-    st.session_state.tracking_city = city
+    # Update session state when button is clicked
+    if start_update_clicked:
+        st.session_state.start_update = not st.session_state.start_update
+        st.session_state.tracking_city = city
 
-# Widget para detener el seguimiento
-stop_update_button = st.button("Detener seguimiento")
+    # Widget para detener el seguimiento
+    stop_update_button = st.button("Detener seguimiento")
 
-# If stop button is clicked, update session state and display warning
-if stop_update_button:
-    st.session_state.start_update = False
-    st.warning("Seguimiento en tiempo real está detenido. Ingrese una ciudad para continuar.")
+    # If stop button is clicked, update session state and display warning
+    if stop_update_button:
+        st.session_state.start_update = False
+        st.warning("Seguimiento en tiempo real está detenido. Ingrese una ciudad para continuar.")
 
-# If session state indicates tracking, fetch and display data, then rerun after a delay
-if st.session_state.start_update and st.session_state.tracking_city:
-    update_weather_data(st.session_state.tracking_city, info_climatica_container)
-    time.sleep(5)  # Refresh data every 5 seconds (can be adjusted as needed)
-    st.experimental_rerun()
+    # If session state indicates tracking, fetch and display data, then rerun after a delay
+    if st.session_state.start_update and st.session_state.tracking_city:
+        update_weather_data(st.session_state.tracking_city, info_climatica_container)
+        time.sleep(5)  # Refresh data every 5 seconds (can be adjusted as needed)
+        st.experimental_rerun()
