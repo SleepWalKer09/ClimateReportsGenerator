@@ -8,6 +8,8 @@ import time
 import regex
 from datetime import datetime, timedelta
 
+#https://openweathermap.org/forecast5
+
 # Definir la URL base de la API
 base_url = "http://localhost:8000/weather/"
 # URL base para obtener los íconos de OpenWeather
@@ -75,6 +77,13 @@ def mostrar_info_climatica(weather_data, info_container):
     kpi2.metric(label="Hora local", value=timezone_str)
     kpi3.metric(label="Temperatura", value=f"{weather_data['main']['temp']} °C")
 
+    
+    # Datos para la gráfica de barras de temperatura mínima y máxima
+    temp_min_max_data = pd.DataFrame({
+        "Tipo": ["Temperatura Mínima", "Temperatura Máxima"],
+        "Valor": [weather_data["main"]["temp_min"], weather_data["main"]["temp_max"]]
+    })
+
     # Mostrar imagen según el campo "icon" de "weather"
     weather_icon = weather_data["weather"][0]["icon"]
     weather_main = weather_data["weather"][0]["main"]
@@ -106,7 +115,11 @@ def mostrar_info_climatica(weather_data, info_container):
         "Descripción": [weather_data["weather"][0]["description"]],
         "Velocidad del Viento(m/s)": [weather_data["wind"]["speed"]],
         "Hora Amanecer(Hora local)": [datetime.fromtimestamp(weather_data["sys"]["sunrise"]).strftime("%Y-%m-%d %H:%M:%S")],
-        "Hora Atardecer(Hora local)": [datetime.fromtimestamp(weather_data["sys"]["sunset"]).strftime("%Y-%m-%d %H:%M:%S")]
+        "Hora Atardecer(Hora local)": [datetime.fromtimestamp(weather_data["sys"]["sunset"]).strftime("%Y-%m-%d %H:%M:%S")],
+        "Hora Amanecer(Hora local)": [datetime.fromtimestamp(weather_data["sys"]["sunrise"]).strftime("%Y-%m-%d %H:%M:%S")],
+        "Hora Atardecer(Hora local)": [datetime.fromtimestamp(weather_data["sys"]["sunset"]).strftime("%Y-%m-%d %H:%M:%S")],
+        "Temperatura Mínima": [weather_data["main"]["temp_min"]],
+        "Temperatura Máxima": [weather_data["main"]["temp_max"]]
     }
     df = pd.DataFrame(data)
 
@@ -123,8 +136,8 @@ def mostrar_info_climatica(weather_data, info_container):
     # Verificar si los DataFrames ya existen en el estado de la sesión. Si no, inicializarlos.
     if "temp_time_df" not in st.session_state:
         st.session_state.temp_time_df = pd.DataFrame(columns=["Tiempo", "Temperatura"])
-    if "temp_min_max_df" not in st.session_state:
-        st.session_state.temp_min_max_df = pd.DataFrame(columns=["Temperatura", "Valor"])
+    if "temp_min_max_time_df" not in st.session_state:
+        st.session_state.temp_min_max_time_df = pd.DataFrame(columns=["Tipo", "Valor"])
     if "pressure_time_df" not in st.session_state:
         st.session_state.pressure_time_df = pd.DataFrame(columns=["Tiempo", "Presión Atmosférica"])
     if "humidity_time_df" not in st.session_state:
@@ -138,11 +151,11 @@ def mostrar_info_climatica(weather_data, info_container):
     st.session_state.temp_time_df = pd.concat([st.session_state.temp_time_df, new_temp_data], ignore_index=True)
 
     new_temp_min_max_data = pd.DataFrame({
-        "Temperatura": ["Temperatura Mínima", "Temperatura Máxima"],
-        "Valor": [weather_data["main"]["temp_min"], weather_data["main"]["temp_max"]]
+        "Tipo": ["Temperatura Máxima", "Temperatura Mínima"],
+        "Valor": [weather_data["main"]["temp_max"], weather_data["main"]["temp_min"]]
     })
-    st.session_state.temp_min_max_df = pd.concat([st.session_state.temp_min_max_df, new_temp_min_max_data], ignore_index=True)
-
+    st.session_state.temp_min_max_time_df = new_temp_min_max_data
+    
     new_pressure_data = pd.DataFrame({
         "Tiempo": [timezone_str],
         "Presión Atmosférica": [weather_data["main"]["pressure"]]
@@ -157,7 +170,20 @@ def mostrar_info_climatica(weather_data, info_container):
 
     # Crear gráficos usando los DataFrames actualizados
     temp_time_chart = px.line(st.session_state.temp_time_df, x="Tiempo", y="Temperatura", title="Variación de Temperatura en el Tiempo")
-    temp_min_max_chart = px.bar(st.session_state.temp_min_max_df, x="Temperatura", y="Valor", title="Temperatura Mínima y Máxima")
+    temp_min_max_chart = px.bar(
+        st.session_state.temp_min_max_time_df, 
+        x="Tipo", y="Valor", 
+        title="Temperatura Mínima y Máxima", 
+        labels={'Valor': 'Temperatura (°C)'},
+        color="Tipo",
+        color_discrete_map={
+            "Temperatura Máxima": "red",
+            "Temperatura Mínima": "blue"
+        },
+        text="Valor"  # Esto agregará etiquetas con los valores
+    )
+    temp_min_max_chart.update_traces(texttemplate='%{text} °C', textposition='outside')
+
     pressure_time_chart = px.line(st.session_state.pressure_time_df, x="Tiempo", y="Presión Atmosférica", title="Variación de Presión Atmosférica en el Tiempo")
     humidity_time_chart = px.line(st.session_state.humidity_time_df, x="Tiempo", y="Humedad", title="Variación de Humedad en el Tiempo")
         
@@ -206,15 +232,15 @@ if __name__ == '__main__':
     city = st.text_input("Ingrese el nombre de la ciudad:", st.session_state.tracking_city)
 
     # Widget para iniciar el seguimiento
-    start_update_clicked = st.button("Iniciar seguimiento")
+    start_update_button = st.button("Iniciar seguimiento", disabled=st.session_state.start_update if 'start_update' in st.session_state else False)
 
     # Update session state when button is clicked
-    if start_update_clicked:
+    if start_update_button:
         st.session_state.start_update = not st.session_state.start_update
         st.session_state.tracking_city = city
 
     # Widget para detener el seguimiento
-    stop_update_button = st.button("Detener seguimiento")
+    stop_update_button = st.button("Detener seguimiento", disabled=not st.session_state.start_update if 'start_update' in st.session_state else True)
 
     # If stop button is clicked, update session state and display warning
     if stop_update_button:
