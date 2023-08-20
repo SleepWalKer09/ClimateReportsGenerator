@@ -6,6 +6,7 @@ import plotly.express as px
 import threading
 import time
 import regex
+from forecastFront import show_forecast,get_forecast
 from datetime import datetime, timedelta
 
 #https://openweathermap.org/forecast5
@@ -20,6 +21,16 @@ st.set_page_config(page_title="Reportes climáticos", page_icon="🌤️",layout
 
 # Título de la interfaz
 st.title("Generador de Reportes Climáticos 🌪️")
+# Sidebar con título e instrucciones
+st.sidebar.title("Instrucciones")
+st.sidebar.write(
+    "1. Ingresa el nombre de la ciudad que quieras monitorear.\n"
+    "2. Presiona 'Iniciar Seguimiento' para comenzar el monitoreo en tiempo real.\n"
+    "3. Para conocer el pronóstico de los proximos 5 dias, presiona 'Mostrar forecast'.\n"
+    "4. Presiona 'Detener Seguimiento' para detener todo el monitoreo.\n"
+    "5. Recomiendo recargar la página para consultar el clima de otra ciudad luego de detener el seguimiento.\n"
+)
+forecast_message_marker = st.empty()
 
 # Función para obtener datos climáticos de la API
 def get_weather_data(city):
@@ -42,6 +53,7 @@ def get_weather_data(city):
         return None
 
     weather_data = response.json()
+    st.session_state.weather_data = response.json()
     
     essential_keys = ['name', 'weather', 'main', 'sys', 'coord', 'wind']
     for key in essential_keys:
@@ -59,9 +71,12 @@ def mostrar_info_climatica(weather_data, info_container):
         info_container.error(weather_data['error'])
         return  # Salir de la función
     # Update the provided container with weather data
+    if 'city_name' not in st.session_state:
+        st.session_state.city_name = weather_data["name"]
+
     info_container.write(
         f'<div style="display: flex; align-items: center;">'
-        f'<h1 style="margin-right: 10px;">Clima en {weather_data["name"]}</h1>'
+        f'<h1 style="margin-right: 10px;">Clima en {st.session_state.city_name}</h1>'
         f'<img src="{icon_base_url}{weather_data["weather"][0]["icon"]}@2x.png" style="width: 180px; height: 120px;">'
         f'</div>',
         unsafe_allow_html=True
@@ -78,11 +93,11 @@ def mostrar_info_climatica(weather_data, info_container):
     kpi3.metric(label="Temperatura", value=f"{weather_data['main']['temp']} °C")
 
     
-    # Datos para la gráfica de barras de temperatura mínima y máxima
-    temp_min_max_data = pd.DataFrame({
-        "Tipo": ["Temperatura Mínima", "Temperatura Máxima"],
-        "Valor": [weather_data["main"]["temp_min"], weather_data["main"]["temp_max"]]
-    })
+    # # Datos para la gráfica de barras de temperatura mínima y máxima
+    # temp_min_max_data = pd.DataFrame({
+    #     "Tipo": ["Temperatura Mínima", "Temperatura Máxima"],
+    #     "Valor": [weather_data["main"]["temp_min"], weather_data["main"]["temp_max"]]
+    # })
 
     # Mostrar imagen según el campo "icon" de "weather"
     weather_icon = weather_data["weather"][0]["icon"]
@@ -90,7 +105,7 @@ def mostrar_info_climatica(weather_data, info_container):
     if weather_icon.endswith("d"):
         # Es de día, usar imágenes sin "_n" para representar el clima
         if weather_main == "Rain":
-            st.image("images\\rainy.jpg", caption="Dia con Lluvia")
+            st.image("images\\rainy.png", caption="Dia con Lluvia")
         elif weather_main == "Clear":
             st.image("images\clear.jpg", caption="Dia Despejado")
         elif weather_main == "Clouds":
@@ -114,12 +129,12 @@ def mostrar_info_climatica(weather_data, info_container):
         "Latitud": [weather_data["coord"]["lat"]],
         "Descripción": [weather_data["weather"][0]["description"]],
         "Velocidad del Viento(m/s)": [weather_data["wind"]["speed"]],
-        "Hora Amanecer(Hora local)": [datetime.fromtimestamp(weather_data["sys"]["sunrise"]).strftime("%Y-%m-%d %H:%M:%S")],
-        "Hora Atardecer(Hora local)": [datetime.fromtimestamp(weather_data["sys"]["sunset"]).strftime("%Y-%m-%d %H:%M:%S")],
-        "Hora Amanecer(Hora local)": [datetime.fromtimestamp(weather_data["sys"]["sunrise"]).strftime("%Y-%m-%d %H:%M:%S")],
-        "Hora Atardecer(Hora local)": [datetime.fromtimestamp(weather_data["sys"]["sunset"]).strftime("%Y-%m-%d %H:%M:%S")],
-        "Temperatura Mínima": [weather_data["main"]["temp_min"]],
-        "Temperatura Máxima": [weather_data["main"]["temp_max"]]
+        "Hora Amanecer(Hora usuario)": [datetime.fromtimestamp(weather_data["sys"]["sunrise"]).strftime("%Y-%m-%d %H:%M:%S")],
+        "Hora Atardecer(Hora usuario)": [datetime.fromtimestamp(weather_data["sys"]["sunset"]).strftime("%Y-%m-%d %H:%M:%S")],
+        "Temperatura Actual": [weather_data["main"]["temp"]],
+        "Temperatura Máxima": [weather_data["main"]["temp_max"]],
+        "Temperatura Mínima": [weather_data["main"]["temp_min"]]
+        
     }
     df = pd.DataFrame(data)
 
@@ -213,12 +228,15 @@ def update_weather_data(city, info_container):
     # Verificar si weather_data es None (indicando un error)
     if weather_data is None:
         return  # Salir de la función
+    st.session_state.lat = weather_data["coord"]["lat"]
+    st.session_state.lon = weather_data["coord"]["lon"]
 
     mostrar_info_climatica(weather_data, info_container)
 
 # Create containers for dynamic content
 info_climatica_container = st.empty()
 graph_container = st.empty()
+forecast_container = st.empty()
 
 # Initialize session state if not already done
 if "tracking_city" not in st.session_state:
@@ -227,28 +245,65 @@ if "tracking_city" not in st.session_state:
 if "start_update" not in st.session_state:
     st.session_state.start_update = False
 
+if 'show_forecast' in st.session_state and st.session_state.show_forecast:
+    show_forecast(forecast_message_marker)
+
+
 if __name__ == '__main__':
     # Widget para obtener la ciudad del usuario
     city = st.text_input("Ingrese el nombre de la ciudad:", st.session_state.tracking_city)
 
-    # Widget para iniciar el seguimiento
-    start_update_button = st.button("Iniciar seguimiento", disabled=st.session_state.start_update if 'start_update' in st.session_state else False)
+    col_iniciar, col_detener, col_forecast = st.columns(3)
+    with col_iniciar:
+        start_update_button = st.button("Iniciar seguimiento", type="primary",disabled=st.session_state.start_update if 'start_update' in st.session_state else False)
+        if not city and start_update_button:
+            st.error("Debes ingresar una ciudad válida")
+            st.session_state.start_update = False
+            st.session_state.forecast_data = None
+            st.session_state.show_forecast = False
+            st.session_state.show_forecast_message = False
+
+    with col_detener:
+        stop_update_button = st.button("Detener seguimiento", type="primary",disabled=not st.session_state.start_update if 'start_update' in st.session_state else True)
+        if stop_update_button:
+            # Limpiar o restablecer el estado y los datos
+            st.session_state.start_update = False
+            st.session_state.forecast_data = None
+            st.session_state.show_forecast = False
+            st.session_state.show_forecast_message = False
+
+    with col_forecast:
+        if st.button("Mostrar forecast", type="primary", disabled=not st.session_state.start_update if 'start_update' in st.session_state else True):
+            st.session_state.show_forecast = True
+            st.session_state.show_forecast_message = True
+            st.session_state.forecast_lon = st.session_state.weather_data["coord"]["lon"]
+            st.session_state.forecast_lat = st.session_state.weather_data["coord"]["lat"]
+            if 'forecast_data' not in st.session_state:
+                forecast_data = get_forecast(st.session_state.forecast_lon, st.session_state.forecast_lat)
+                st.session_state['forecast_data'] = forecast_data
+
+    if 'show_forecast' in st.session_state and st.session_state.show_forecast:
+        show_forecast(forecast_message_marker)
+
 
     # Update session state when button is clicked
     if start_update_button:
         st.session_state.start_update = not st.session_state.start_update
         st.session_state.tracking_city = city
-
-    # Widget para detener el seguimiento
-    stop_update_button = st.button("Detener seguimiento", disabled=not st.session_state.start_update if 'start_update' in st.session_state else True)
-
     # If stop button is clicked, update session state and display warning
     if stop_update_button:
         st.session_state.start_update = False
-        st.warning("Seguimiento en tiempo real está detenido. Ingrese una ciudad para continuar.")
+        st.session_state.forecast_data = None
+        st.session_state.show_forecast = False
+        st.session_state.show_forecast_message = False
+        st.warning("Se ha detenido el seguimiento del clima en tiempo real.")
+    # if 'show_forecast_message' in st.session_state and st.session_state.show_forecast_message:
+    #     st.success(f"Mostrando pronóstico de los próximos 5 días para **{city}**")
 
+    
     # If session state indicates tracking, fetch and display data, then rerun after a delay
     if st.session_state.start_update and st.session_state.tracking_city:
         update_weather_data(st.session_state.tracking_city, info_climatica_container)
         time.sleep(5)  # Refresh data every 5 seconds (can be adjusted as needed)
         st.experimental_rerun()
+
