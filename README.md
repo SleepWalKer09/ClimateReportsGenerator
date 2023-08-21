@@ -1,7 +1,7 @@
 # ClimateReportsGenerator
 Generate real-time weather reports for different cities around the world. From the OpenWeather API using FastAPI and displays it using Streamlit a Python web framework.
 
-Images courtesy of https://unsplash.com/
+Images courtesy of [Unsplash](https://unsplash.com/)
 ## Features:
 
 1. **Real-Time Weather Data:** The application retrieves real-time weather data from the OpenWeather API, including temperature, humidity, pressure, weather description, and wind speed.
@@ -22,13 +22,15 @@ Images courtesy of https://unsplash.com/
 ## Steps to run the program:
 
 1. Install libraries and dependencies from the requirements.txt file.
+
+2. In "OpenWeather.py" file you have to put your own Api-key from [OpenWeather](https://openweathermap.org/) by changing this line `API_KEY = st.secrets["api_key"]` to `API_KEY ='YOUR_OPENWEATHER_API'`
    
-2. Have the FastAPI server running (uvicorn OpenWeather:app --reload).
+3. Have the FastAPI server running = `uvicorn OpenWeather:app --reload`.
    
-3. Compile the "FrontStream.py" file using streamlit (streamlit run FrontStream.py).
+4. Compile the "FrontStream.py" file using streamlit = `streamlit run FrontStream.py`.
    
-4. Once the interface is rendered, just enter the name of any desired city and click on the "Start tracking" button to begin real-time weather tracking for that city and then wait a few seconds while the request is processed.
+5. Once the interface is rendered, just enter the name of any desired city and click on the "Start tracking" button to begin real-time weather tracking for that city and then wait a few seconds while the request is processed.
    
-5. If you want to see the forecast for the next 5 days, the user should click on the "show forecast" button.
+6. If you want to see the forecast for the next 5 days, the user should click on the "show forecast" button.
     
-6. At any time, you can stop real-time tracking by clicking on "stop tracking"."
+7. At any time, you can stop real-time tracking by clicking on "stop tracking"."
