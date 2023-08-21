@@ -14,3 +14,4 @@ Images courtesy of https://unsplash.com/
 
 5. **User Interaction:** Users can interact with the application by entering different city names to retrieve weather information. Additionally, they can stop the real-time updates using the "Detener seguimiento" button.
 
+6. **Five day weather forecast** Based on the city chosen by the user, the system is able to display the weather for the next 5 days from the day of inquiry.
