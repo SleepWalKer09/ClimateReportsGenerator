@@ -23,9 +23,8 @@ icon_base_url = "https://openweathermap.org/img/wn/"
 # Configuración de la página
 st.set_page_config(page_title="Reportes climáticos", page_icon="🌤️",layout="wide")
 
-# Título de la interfaz
+
 st.title("Generador de Reportes Climáticos 🌪️")
-# Sidebar con título e instrucciones
 st.sidebar.title("Instrucciones")
 st.sidebar.write(
     "1. Ingresa el nombre de la ciudad que quieras monitorear.\n"
@@ -113,7 +112,6 @@ def mostrar_info_climatica(weather_data, info_container):
     )
     # Dividir el espacio en tres columnas
     kpi1, kpi2, kpi3 = st.columns(3)
-    # Mostrar la hora local de la ciudad
     timezone_offset = weather_data["timezone"]
     timezone = datetime.utcnow() + timedelta(seconds=timezone_offset)
     timezone_str = timezone.strftime("%H:%M:%S")
@@ -126,7 +124,6 @@ def mostrar_info_climatica(weather_data, info_container):
     weather_icon = weather_data["weather"][0]["icon"]
     weather_main = weather_data["weather"][0]["main"]
     if weather_icon.endswith("d"):
-        # Es de día, usar imágenes sin "_n" para representar el clima
         if weather_main == "Rain":
             st.image("images\\rainy.png", caption="Dia con Lluvia")
         elif weather_main == "Clear":
@@ -134,7 +131,6 @@ def mostrar_info_climatica(weather_data, info_container):
         elif weather_main == "Clouds":
             st.image("images\cloudy.jpg", caption="Dia Nublado")
     else:
-        # Es de noche, usar imágenes con "_n" para representar el clima
         if weather_main == "Rain":
             st.image("images\\rainy_n.jpg", caption="Noche con Lluvia")
         elif weather_main == "Clear":
@@ -161,16 +157,14 @@ def mostrar_info_climatica(weather_data, info_container):
     }
     df = pd.DataFrame(data)
 
-    # Create a full-width column and display the dataframe in it
-    col1 = st.columns(1)[0]  # Use 1 to take the full width, 0 for an empty space
+    col1 = st.columns(1)[0] 
     col1.dataframe(df)
 
-    # Mostrar las gráficas
+    # Mostrar gráficas
     timezone_offset = weather_data["timezone"]
     timezone = datetime.utcnow() + timedelta(seconds=timezone_offset)
     timezone_str = timezone.strftime("%H:%M:%S")
 
-    # Mostrar gráficas
     # Verificar si los DataFrames ya existen en el estado de la sesión. Si no, inicializarlos.
     if "temp_time_df" not in st.session_state:
         st.session_state.temp_time_df = pd.DataFrame(columns=["Tiempo", "Temperatura"])
@@ -218,7 +212,7 @@ def mostrar_info_climatica(weather_data, info_container):
             "Temperatura Máxima": "red",
             "Temperatura Mínima": "blue"
         },
-        text="Valor"  # Esto agregará etiquetas con los valores
+        text="Valor"
     )
     temp_min_max_chart.update_traces(texttemplate='%{text} °C', textposition='outside')
 
@@ -270,12 +264,11 @@ def update_weather_data(city, info_container):
 
     mostrar_info_climatica(weather_data, info_container)
 
-# Create containers for dynamic content
+# Crear containers para contenido dinamico
 info_climatica_container = st.empty()
 graph_container = st.empty()
 forecast_container = st.empty()
 
-# Initialize session state if not already done
 if "tracking_city" not in st.session_state:
     st.session_state.tracking_city = ""
 
@@ -287,7 +280,6 @@ if 'show_forecast' in st.session_state and st.session_state.show_forecast:
 
 
 if __name__ == '__main__':
-    # Widget para obtener la ciudad del usuario
     city = st.text_input("Ingrese el nombre de la ciudad:", st.session_state.tracking_city)
 
     col_iniciar, col_detener, col_forecast = st.columns(3)
@@ -303,7 +295,6 @@ if __name__ == '__main__':
     with col_detener:
         stop_update_button = st.button("Detener seguimiento", type="primary",disabled=not st.session_state.start_update if 'start_update' in st.session_state else True)
         if stop_update_button:
-            # Limpiar o restablecer el estado y los datos
             st.session_state.start_update = False
             st.session_state.forecast_data = None
             st.session_state.show_forecast = False
@@ -322,23 +313,18 @@ if __name__ == '__main__':
     if 'show_forecast' in st.session_state and st.session_state.show_forecast:
         show_forecast(forecast_message_marker)
 
-
-    # Update session state when button is clicked
     if start_update_button:
         st.session_state.start_update = not st.session_state.start_update
         st.session_state.tracking_city = city
-    # If stop button is clicked, update session state and display warning
+
     if stop_update_button:
         st.session_state.start_update = False
         st.session_state.forecast_data = None
         st.session_state.show_forecast = False
         st.session_state.show_forecast_message = False
         st.warning("Se ha detenido el seguimiento del clima en tiempo real.")
-    # if 'show_forecast_message' in st.session_state and st.session_state.show_forecast_message:
-    #     st.success(f"Mostrando pronóstico de los próximos 5 días para **{city}**")
 
-    
-    # If session state indicates tracking, fetch and display data, then rerun after a delay
+        
     if st.session_state.start_update and st.session_state.tracking_city:
         update_weather_data(st.session_state.tracking_city, info_climatica_container)
         time.sleep(5)  # Refresh data every 5 seconds (can be adjusted as needed)

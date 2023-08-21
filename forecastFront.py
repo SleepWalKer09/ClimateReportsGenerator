@@ -11,6 +11,22 @@ import datetime
 #BASE_URL = "http://localhost:8000/forecast_weather/"
 
 async def fetch_forecast_data(lat, lon):
+    """
+    Asíncronamente recupera datos de pronóstico del clima basados en la latitud y longitud proporcionadas.
+
+    Esta función consulta una API local en `localhost:8000/forecast` para obtener el pronóstico del clima
+    para una ubicación específica (latitud y longitud). Antes de hacer la consulta, verifica si la 
+    latitud y longitud ya están almacenadas en el `session_state` de Streamlit y, en caso afirmativo, 
+    utiliza esos valores en lugar de los proporcionados.
+
+    Parámetros:
+    - lat (float): Latitud de la ubicación para la que se debe obtener el pronóstico.
+    - lon (float): Longitud de la ubicación para la que se debe obtener el pronóstico.
+
+    Devuelve:
+    - dict or None: Datos de pronóstico del clima si la consulta es exitosa, o None si no se encuentra 
+                    información en el `session_state` o si ocurre algún otro error.
+    """
     if "lat" in st.session_state and "lon" in st.session_state:
         lat = st.session_state.lat
         lon = st.session_state.lon
@@ -20,12 +36,26 @@ async def fetch_forecast_data(lat, lon):
     return None
 
 def get_forecast(lat, lon):
+    """
+    Obtiene datos de pronóstico del clima basados en la latitud y longitud proporcionadas.
 
+    Esta función utiliza la función asincrónica `fetch_forecast_data` para recuperar el pronóstico del clima
+    para una ubicación específica (latitud y longitud). Internamente, hace uso de asyncio para ejecutar 
+    la función asincrónica y obtener el resultado.
+
+    Parámetros:
+    - lat (float): Latitud de la ubicación para la que se debe obtener el pronóstico.
+    - lon (float): Longitud de la ubicación para la que se debe obtener el pronóstico.
+
+    Devuelve:
+    - dict or None: Datos de pronóstico del clima si la consulta es exitosa, o None si ocurre algún error.
+    """
     import asyncio
     return asyncio.run(fetch_forecast_data(lat, lon))
 
 # Lógica para Streamlit
     """
+    show_forecast
     Muestra el pronóstico del clima de los próximos 5 días en Streamlit.
 
     Parámetros:
@@ -39,34 +69,29 @@ def get_forecast(lat, lon):
     - La función espera que los datos del pronóstico estén disponibles en st.session_state.
     """
 def show_forecast(forecast_message_marker):
+
     # Verificar si hay datos de pronóstico en session_state; si no, terminar la función
     if 'forecast_data' not in st.session_state or not st.session_state.forecast_data:
         return
 
-    # Mostrar el mensaje al inicio de la sección de pronóstico utilizando el marcador de posición
     forecast_message_marker.success(f"Mostrando pronóstico de los próximos **5 días**")
     
     # Filtrar los datos para que solo se incluyan las entradas de "15:00:00" horas
     filtered_data = [entry for entry in st.session_state.forecast_data["list"] if "15:00:00" in entry["dt_txt"]]
 
-    # Lugar donde se renderizará el pronóstico
     if 'forecast_marker' not in st.session_state:
         st.session_state.forecast_marker = st.empty()
 
-    # Contenedor general para todo el pronóstico
     forecast_container = st.session_state.forecast_marker.container()
     
     # Iterar sobre los datos filtrados y mostrar en el contenedor general
     for day_data in filtered_data:
-        # Extraer solo la fecha (sin la hora) y convertirla a un formato legible
-        date_only = day_data["dt_txt"].split()[0]
         
-        # Extraer los datos necesarios
+        date_only = day_data["dt_txt"].split()[0]
         temp = day_data["main"]["temp"]
         description = day_data["weather"][0]["description"]
         icon_url = f"https://openweathermap.org/img/wn/{day_data['weather'][0]['icon']}@2x.png"
 
-        # Crear una fila para este conjunto de datos dentro del contenedor general
         col1, col2, col3, col4 = forecast_container.columns(4)
         col1.metric(label="Fecha", value=date_only)
         col2.metric(label="Temperatura Promedio", value=f"{temp} °C")
