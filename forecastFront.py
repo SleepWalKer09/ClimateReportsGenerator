@@ -10,9 +10,8 @@ import datetime
 # URL de tu FastAPI
 #BASE_URL = "http://localhost:8000/forecast_weather/"
 
-async def fetch_forecast_data(lat, lon):
-    """
-    Asíncronamente recupera datos de pronóstico del clima basados en la latitud y longitud proporcionadas.
+"""
+Asíncronamente recupera datos de pronóstico del clima basados en la latitud y longitud proporcionadas.
 
     Esta función consulta una API local en `localhost:8000/forecast` para obtener el pronóstico del clima
     para una ubicación específica (latitud y longitud). Antes de hacer la consulta, verifica si la 
@@ -26,7 +25,9 @@ async def fetch_forecast_data(lat, lon):
     Devuelve:
     - dict or None: Datos de pronóstico del clima si la consulta es exitosa, o None si no se encuentra 
                     información en el `session_state` o si ocurre algún otro error.
-    """
+"""
+async def fetch_forecast_data(lat, lon):
+
     if "lat" in st.session_state and "lon" in st.session_state:
         lat = st.session_state.lat
         lon = st.session_state.lon
@@ -35,7 +36,6 @@ async def fetch_forecast_data(lat, lon):
         return data
     return None
 
-def get_forecast(lat, lon):
     """
     Obtiene datos de pronóstico del clima basados en la latitud y longitud proporcionadas.
 
@@ -50,6 +50,8 @@ def get_forecast(lat, lon):
     Devuelve:
     - dict or None: Datos de pronóstico del clima si la consulta es exitosa, o None si ocurre algún error.
     """
+def get_forecast(lat, lon):
+
     import asyncio
     return asyncio.run(fetch_forecast_data(lat, lon))
 
