@@ -1,3 +1,8 @@
+"""
+Módulo que contiene la lógica de presentación para mostrar el pronóstico del clima en Streamlit.
+Utiliza datos obtenidos de la API de OpenWeather para mostrar el pronóstico de 5 días.
+"""
+
 import streamlit as st
 import httpx
 import datetime
@@ -20,6 +25,19 @@ def get_forecast(lat, lon):
     return asyncio.run(fetch_forecast_data(lat, lon))
 
 # Lógica para Streamlit
+    """
+    Muestra el pronóstico del clima de los próximos 5 días en Streamlit.
+
+    Parámetros:
+    - forecast_message_marker (streamlit.delta_generator.DeltaGenerator): 
+        Marcador de posición en Streamlit donde se mostrará el mensaje del pronóstico.
+
+    Devuelve:
+    - None: Esta función no devuelve nada. Su propósito es renderizar información en la interfaz de Streamlit.
+
+    Notas:
+    - La función espera que los datos del pronóstico estén disponibles en st.session_state.
+    """
 def show_forecast(forecast_message_marker):
     # Verificar si hay datos de pronóstico en session_state; si no, terminar la función
     if 'forecast_data' not in st.session_state or not st.session_state.forecast_data:

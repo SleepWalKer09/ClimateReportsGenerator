@@ -1,32 +1,6 @@
-# from fastapi import FastAPI, HTTPException
-# from pydantic import BaseModel
-# import requests
-# import streamlit as st
-
-# app = FastAPI()
-
-# #llamada a clima actual en ciudad elegida
-# @app.get("/weather/{city}")
-# async def get_weather(city: str):
-#     try:
-#         api_key=st.secrets["api_key"]
-#         url_weather = f"https://api.openweathermap.org/data/2.5/weather?q={city}&APPID={api_key}&units=metric"
-#         response = requests.get(url_weather)
-#         weather_data = response.json()
-#         return weather_data
-#     except requests.RequestException:
-#         raise HTTPException(status_code=404, detail="City not found")        
-
-# @app.get("/forecast/")
-# async def get_forecast(lat: float, lon: float):
-#     try:
-#         api_key=st.secrets["api_key"]
-#         url_forecast = f"https://api.openweathermap.org/data/2.5/forecast?lat={lat}&lon={lon}&appid={api_key}"
-#         response = requests.get(url_forecast)
-#         weather_forecast = response.json()
-#         return weather_forecast
-#     except requests.RequestException:
-#         raise HTTPException(status_code=404, detail="Forecast data not found for provided coordinates")
+"""
+Módulo para interactuar con la API de OpenWeather.
+"""
 
 from fastapi import FastAPI, HTTPException
 import httpx
@@ -41,6 +15,16 @@ FORECAST_WEATHER_URL = "http://api.openweathermap.org/data/2.5/forecast?lat={}&l
 
 @app.get("/weather/{city}")
 async def get_current_weather(city: str):
+    """
+    Obtiene el clima actual de una ciudad específica usando la API de OpenWeather.
+
+    Parámetros:
+    - city (str): Nombre de la ciudad para la cual obtener el clima.
+
+    Devuelve:
+    - dict: Diccionario con información del clima actual.
+        Si hay un error en la solicitud, devuelve None.
+    """
     async with httpx.AsyncClient() as client:
         response = await client.get(CURRENT_WEATHER_URL.format(city, API_KEY))
     
@@ -54,6 +38,17 @@ async def get_current_weather(city: str):
 
 @app.get("/forecast")
 async def get_forecast_weather(lat: float, lon: float):
+    """
+    Obtiene el pronóstico del clima para los próximos 5 días basado en la longitud y latitud.
+
+    Parámetros:
+    - lon (float): Longitud geográfica para la cual obtener el pronóstico.
+    - lat (float): Latitud geográfica para la cual obtener el pronóstico.
+
+    Devuelve:
+    - dict: Diccionario con información del pronóstico del clima para los próximos 5 días.
+            Si hay un error en la solicitud, devuelve None.
+    """
     async with httpx.AsyncClient() as client:
         response = await client.get(FORECAST_WEATHER_URL.format(lat, lon, API_KEY))
     

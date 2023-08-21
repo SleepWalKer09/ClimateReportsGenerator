@@ -1,4 +1,8 @@
-
+"""
+Módulo principal de la aplicación Streamlit para el generador de reportes climáticos.
+Permite a los usuarios ingresar una ciudad, iniciar y detener el seguimiento del clima en tiempo real, 
+y ver el pronóstico de 5 días.
+"""
 import streamlit as st
 import httpx
 import pandas as pd
@@ -34,7 +38,20 @@ forecast_message_marker = st.empty()
 
 # Función para obtener datos climáticos de la API
 def get_weather_data(city):
-    # Validate the city name to contain only Unicode letters and spaces
+    """
+    Obtiene los datos climáticos para una ciudad específica desde la API.
+
+    La función valida el nombre de la ciudad para asegurar que contenga solo letras Unicode y espacios.
+    Si la API devuelve un error o no se encuentra información para la ciudad proporcionada, 
+    se muestra un mensaje de error en Streamlit y se restablece el estado de seguimiento.
+
+    Parámetros:
+    - city (str): Nombre de la ciudad para la cual obtener los datos climáticos.
+
+    Devuelve:
+    - dict: Diccionario con información del clima para la ciudad especificada.
+            Si hay un problema o no se encuentra información para la ciudad, devuelve None.
+    """
     if not regex.match("^\\p{L}[\\p{L}\\s]*$", city):
         st.error(f"'{city}' no es un nombre de ciudad válido. Por favor, introduce un nombre de ciudad correcto.")
         st.session_state.start_update = False  # Reset tracking state
@@ -66,6 +83,19 @@ def get_weather_data(city):
 
 # Función para mostrar TODA la información climática en la interfaz
 def mostrar_info_climatica(weather_data, info_container):
+    """
+    Muestra la información climática en la interfaz de Streamlit.
+
+    Esta función toma los datos climáticos y los muestra en una serie de tarjetas,
+    imágenes y gráficos interactivos en la interfaz de Streamlit. Si se encuentra un error
+    en los datos proporcionados, muestra un mensaje de error en lugar de la información climática.
+
+    Parámetros:
+    - weather_data (dict): Diccionario con la información climática obtenida de la API.
+    - info_container (streamlit.delta_generator.DeltaGenerator): Contenedor Streamlit donde se mostrará la información.
+
+    No devuelve nada.
+    """
     # Verificar si hay un error en la respuesta
     if 'error' in weather_data:
         info_container.error(weather_data['error'])
@@ -91,13 +121,6 @@ def mostrar_info_climatica(weather_data, info_container):
     kpi1.metric(label="Descripción del clima", value=weather_data['weather'][0]['description'])
     kpi2.metric(label="Hora local", value=timezone_str)
     kpi3.metric(label="Temperatura", value=f"{weather_data['main']['temp']} °C")
-
-    
-    # # Datos para la gráfica de barras de temperatura mínima y máxima
-    # temp_min_max_data = pd.DataFrame({
-    #     "Tipo": ["Temperatura Mínima", "Temperatura Máxima"],
-    #     "Valor": [weather_data["main"]["temp_min"], weather_data["main"]["temp_max"]]
-    # })
 
     # Mostrar imagen según el campo "icon" de "weather"
     weather_icon = weather_data["weather"][0]["icon"]
@@ -224,6 +247,20 @@ def mostrar_info_climatica(weather_data, info_container):
         st.plotly_chart(humidity_time_chart)
 
 def update_weather_data(city, info_container):
+    """
+    Actualiza y muestra la información climática para una ciudad dada.
+
+    Esta función obtiene datos climáticos para una ciudad específica utilizando la función
+    `get_weather_data`, luego actualiza las coordenadas de la sesión (latitud y longitud) basadas en 
+    la respuesta y finalmente utiliza la función `mostrar_info_climatica` para mostrar
+    la información climática en la interfaz Streamlit.
+
+    Parámetros:
+    - city (str): Nombre de la ciudad para la cual se debe obtener la información climática.
+    - info_container (streamlit.delta_generator.DeltaGenerator): Contenedor Streamlit donde se mostrará la información.
+
+    No devuelve nada.
+    """
     weather_data = get_weather_data(city)
     # Verificar si weather_data es None (indicando un error)
     if weather_data is None:
